@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="42" fill="#0e0f14"/>
+  <rect width="192" height="192" rx="42" fill="url(#g)"/>
+  <defs>
+    <radialGradient id="g" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#f5a623" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#0e0f14" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Losange principal -->
+  <polygon points="96,34 157,96 96,157 34,96"
+           fill="none" stroke="#f5a623" stroke-width="4.800000000000001" stroke-linejoin="round"/>
+  <!-- Losange intérieur -->
+  <polygon points="96,61 130,96 96,130 61,96"
+           fill="none" stroke="#f5a623" stroke-width="3.4559999999999995" stroke-opacity="0.4" stroke-linejoin="round"/>
+  <!-- Point central -->
+  <circle cx="96" cy="96" r="8.64" fill="#f5a623"/>
+</svg>
