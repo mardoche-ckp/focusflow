@@ -96,3 +96,33 @@ self.addEventListener('message', function(event) {
     self.skipWaiting();
   }
 });
+
+/* ── Gestion des notifications push (mobile) ── */
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  /* Ouvre ou remet au premier plan l'app au clic sur la notif */
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      for (var i = 0; i < clientList.length; i++) {
+        var client = clientList[i];
+        if ('focus' in client) { return client.focus(); }
+      }
+      if (clients.openWindow) { return clients.openWindow('./'); }
+    })
+  );
+});
+
+/* ── Notification push reçue (background) ── */
+self.addEventListener('push', function(event) {
+  if (!event.data) return;
+  var data = event.data.json();
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'FocusFlow', {
+      body:    data.body  || '',
+      icon:    './icons/icon-192.svg',
+      badge:   './icons/icon-192.svg',
+      vibrate: [200, 100, 200],
+      tag:     'focusflow-deadline'
+    })
+  );
+});

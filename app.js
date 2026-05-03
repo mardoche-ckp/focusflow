@@ -371,34 +371,124 @@ class LockManager {
     }
   }
 
-  /* ── Tente l'authentification biométrique ── */
+  /* ── Biométrie : affiche le bouton si un credential est enregistré ── */
   async _tryBiometric() {
     if (!this.bioEnabled) { return; }
     if (!window.PublicKeyCredential) { return; }
+    /* Vérifie qu'un credential a bien été enregistré */
+    var credId = localStorage.getItem('ff_bio_cred_id');
+    if (!credId) { return; } /* Pas encore enregistré → pas de bouton */
     var btn = document.getElementById('biometricBtn');
-    if (btn) { btn.hidden = false; }
-    /* On affiche le bouton mais on ne force pas l'ouverture automatique
-       pour respecter les préférences utilisateur */
     if (btn) {
+      btn.hidden = false;
       var self = this;
       btn.addEventListener('click', function() { self._doBiometric(); });
     }
   }
 
-  async _doBiometric() {
+  /**
+   * ÉTAPE 1 — Enregistre la biométrie (crée un credential WebAuthn).
+   * Appelée quand l'utilisateur active la biométrie dans les Réglages.
+   */
+  async _registerBiometric() {
+    if (!window.PublicKeyCredential) {
+      return { ok: false, msg: 'WebAuthn non supporté sur cet appareil.' };
+    }
     try {
-      /* Utilise WebAuthn pour l'authentification */
-      var assertion = await navigator.credentials.get({
+      /* Vérifie que la biométrie est disponible */
+      var available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (!available) {
+        return { ok: false, msg: 'Aucun capteur biométrique détecté.' };
+      }
+
+      /* Crée un credential lié à l'empreinte/Face ID */
+      var enc = new TextEncoder();
+      var credential = await navigator.credentials.create({
         publicKey: {
           challenge:  crypto.getRandomValues(new Uint8Array(32)),
-          timeout:    30000,
-          userVerification: 'required'
+          rp:         { name: 'FocusFlow', id: location.hostname },
+          user: {
+            id:          enc.encode('focusflow-user'),
+            name:        'FocusFlow User',
+            displayName: 'FocusFlow'
+          },
+          pubKeyCredParams: [
+            { alg: -7,   type: 'public-key' }, /* ES256 */
+            { alg: -257, type: 'public-key' }  /* RS256 */
+          ],
+          authenticatorSelection: {
+            authenticatorAttachment: 'platform',  /* capteur intégré */
+            userVerification:        'required',   /* biométrie obligatoire */
+            requireResidentKey:      false
+          },
+          timeout: 60000,
+          attestation: 'none'
         }
       });
-      if (assertion) { this._unlock(); }
+
+      /* Sauvegarde l'id du credential en base64 */
+      var idArray = new Uint8Array(credential.rawId);
+      var idB64   = btoa(String.fromCharCode.apply(null, idArray));
+      localStorage.setItem('ff_bio_cred_id', idB64);
+      return { ok: true };
+
     } catch(e) {
+      console.warn('[Bio] Enregistrement:', e);
+      if (e.name === 'NotAllowedError') {
+        return { ok: false, msg: 'Permission refusée. Autorisez la biométrie dans les paramètres Android.' };
+      }
+      return { ok: false, msg: 'Enregistrement biométrique échoué : ' + e.message };
+    }
+  }
+
+  /**
+   * ÉTAPE 2 — Vérifie l'empreinte (utilise le credential enregistré).
+   * Appelée quand l'utilisateur appuie sur le bouton biométrie.
+   */
+  async _doBiometric() {
+    var credIdB64 = localStorage.getItem('ff_bio_cred_id');
+    if (!credIdB64) {
       var errEl = document.getElementById('unlockError');
-      if (errEl) { errEl.textContent = 'Authentification biométrique annulée.'; }
+      if (errEl) { errEl.textContent = 'Biométrie non configurée. Activez-la dans Réglages.'; }
+      return;
+    }
+
+    try {
+      /* Reconstruit l'id du credential depuis base64 */
+      var credIdBytes = Uint8Array.from(atob(credIdB64), function(c) { return c.charCodeAt(0); });
+
+      var assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge:        crypto.getRandomValues(new Uint8Array(32)),
+          timeout:          30000,
+          userVerification: 'required',
+          rpId:             location.hostname,
+          /* Passe le credential enregistré → le navigateur sait quoi vérifier */
+          allowCredentials: [{
+            type: 'public-key',
+            id:   credIdBytes,
+            transports: ['internal']  /* capteur intégré (fingerprint/face) */
+          }]
+        }
+      });
+
+      if (assertion) {
+        this._unlock();
+      }
+
+    } catch(e) {
+      console.warn('[Bio] Vérification:', e);
+      var errEl = document.getElementById('unlockError');
+      if (e.name === 'NotAllowedError') {
+        if (errEl) { errEl.textContent = 'Biométrie annulée ou délai dépassé.'; }
+      } else if (e.name === 'InvalidStateError') {
+        /* Credential expiré → on le supprime et on demande de re-configurer */
+        localStorage.removeItem('ff_bio_cred_id');
+        localStorage.setItem('ff_bio', 'false');
+        if (errEl) { errEl.textContent = 'Session biométrique expirée. Reconfigurez dans Réglages.'; }
+      } else {
+        if (errEl) { errEl.textContent = 'Échec biométrique. Utilisez votre PIN.'; }
+      }
     }
   }
 
@@ -749,9 +839,47 @@ class DeadlineManager {
   getLabel(o)  { var d=diffJours(o.dateFin); if(d<0)return'Dépassé de '+Math.abs(d)+'j !'; if(d===0)return'Aujourd\'hui !'; if(d===1)return'Demain !'; return'Dans '+d+' jours'; }
   getIcon(o)   { var d=diffJours(o.dateFin); if(d<0)return'🚨'; if(d<=1)return'⏰'; if(d<=3)return'⚠️'; return'📅'; }
   getClass(o)  { var d=diffJours(o.dateFin); if(d<=1)return'urgent'; if(d<=3)return'warning'; return'ok'; }
-  async requestPermission() { if(!('Notification'in window))return false; if(Notification.permission==='granted')return true; if(Notification.permission==='denied')return false; var r=await Notification.requestPermission(); return r==='granted'; }
-  sendNotification(title, body) { if(!('Notification'in window)||Notification.permission!=='granted')return; new Notification(title,{body:body,icon:'./icons/icon-192.svg',vibrate:[200,100,200]}); }
-  checkAndNotify(objectifs) { var self=this; var dl=this.getDeadlines(objectifs); dl.urgent.forEach(function(o){self.sendNotification('🚨 Deadline !','"'+o.titre+'" — '+self.getLabel(o));}); dl.warning.forEach(function(o){self.sendNotification('⚠️ Deadline proche','"'+o.titre+'" — '+self.getLabel(o));}); }
+  async requestPermission() {
+    if (!('Notification' in window)) { return false; }
+    if (Notification.permission === 'granted') { return true; }
+    if (Notification.permission === 'denied')  {
+      /* Sur Android : les permissions refusées ne peuvent être
+         récupérées que depuis les paramètres système de l'app */
+      return false;
+    }
+    /* Demande la permission */
+    var result = await Notification.requestPermission();
+    return result === 'granted';
+  }
+  sendNotification(title, body) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    /* Sur mobile : utilise le Service Worker pour afficher la notification
+       (plus fiable que new Notification() qui ne fonctionne pas en arrière-plan) */
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(function(reg) {
+        reg.showNotification(title, {
+          body:    body,
+          icon:    './icons/icon-192.svg',
+          badge:   './icons/icon-192.svg',
+          vibrate: [200, 100, 200],
+          tag:     'focusflow-deadline',  /* évite les doublons */
+          renotify: false
+        });
+      }).catch(function() {
+        /* Fallback si SW pas encore actif */
+        new Notification(title, { body: body, icon: './icons/icon-192.svg' });
+      });
+    } else {
+      /* Fallback PC / SW non disponible */
+      new Notification(title, { body: body, icon: './icons/icon-192.svg' });
+    }
+  }
+  checkAndNotify(objectifs) {
+    var self = this;
+    var dl   = this.getDeadlines(objectifs);
+    dl.urgent.forEach(function(o)  { self.sendNotification('🚨 Deadline !',      '"' + o.titre + '" — ' + self.getLabel(o)); });
+    dl.warning.forEach(function(o) { self.sendNotification('⚠️ Deadline proche', '"' + o.titre + '" — ' + self.getLabel(o)); });
+  }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1094,18 +1222,43 @@ class App {
 
   _initBiometricRow() {
     if (!window.PublicKeyCredential) return;
-    var row = document.getElementById('biometricRow');
-    if (row) row.hidden = false;
-    var btn = document.getElementById('toggleBiometric');
-    if (!btn) return;
-    btn.classList.toggle('on', this.lockManager.bioEnabled);
+    /* Vérifie que l'authentificateur de plateforme est dispo (capteur intégré) */
     var self = this;
-    btn.addEventListener('click', function() {
-      var newVal = !self.lockManager.bioEnabled;
-      self.lockManager.setBiometric(newVal);
-      btn.classList.toggle('on', newVal);
-      self.ui.toast(newVal ? '👆 Biométrie activée' : 'Biométrie désactivée');
-    });
+    PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(function(available) {
+      if (!available) return; /* Pas de capteur → on masque l'option */
+      var row = document.getElementById('biometricRow');
+      if (row) row.hidden = false;
+      var btn = document.getElementById('toggleBiometric');
+      if (!btn) return;
+
+      /* Reflète l'état actuel */
+      var hasCred = !!localStorage.getItem('ff_bio_cred_id');
+      btn.classList.toggle('on', self.lockManager.bioEnabled && hasCred);
+
+      btn.addEventListener('click', async function() {
+        var currentlyEnabled = self.lockManager.bioEnabled && !!localStorage.getItem('ff_bio_cred_id');
+
+        if (!currentlyEnabled) {
+          /* ── Activation : enregistre le credential biométrique ── */
+          self.ui.toast('👆 Placez votre doigt sur le capteur…', '', 4000);
+          var result = await self.lockManager._registerBiometric();
+          if (result.ok) {
+            self.lockManager.setBiometric(true);
+            btn.classList.add('on');
+            self.ui.toast('✅ Biométrie configurée !', 'success');
+          } else {
+            self.ui.toast('❌ ' + result.msg, 'error', 4000);
+            btn.classList.remove('on');
+          }
+        } else {
+          /* ── Désactivation : supprime le credential ── */
+          self.lockManager.setBiometric(false);
+          localStorage.removeItem('ff_bio_cred_id');
+          btn.classList.remove('on');
+          self.ui.toast('🔕 Biométrie désactivée');
+        }
+      });
+    }).catch(function() { /* WebAuthn pas supporté, on ignore */ });
   }
 
   _registerSW() { if('serviceWorker'in navigator){navigator.serviceWorker.register('./sw.js').then(function(){console.log('[FF]SW✓');}).catch(function(e){console.warn('[FF]SW:',e);});} }
