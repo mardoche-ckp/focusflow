@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
@@ -8,66 +8,55 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="FocusFlow"/>
-  <meta name="description" content="Gestion d'objectifs personnels"/>
-
-  <title>FocusFlow</title>
-
-  <!-- PWA Manifest -->
+  <meta name="description" content="Gestion d'objectifs personnels — v2"/>
+  <title>FocusFlow v2</title>
   <link rel="manifest" href="manifest.json"/>
-
-  <!-- Icône Apple -->
   <link rel="apple-touch-icon" href="icons/icon-192.svg"/>
-
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
   <!-- ══════════════════════════════════
-       SPLASH SCREEN (affiché au lancement)
+       SPLASH SCREEN
   ══════════════════════════════════ -->
   <div id="splash" class="splash">
     <div class="splash__inner">
       <span class="splash__logo">◈</span>
       <span class="splash__name">FocusFlow</span>
-      <span class="splash__tag">Vos objectifs, votre progression.</span>
+
     </div>
   </div>
 
-  <!-- ══════════════════════════════════
-       TOAST NOTIFICATION
-  ══════════════════════════════════ -->
+  <!-- CONFETTI CANVAS (complétion objectif) -->
+  <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+
+  <!-- TOAST -->
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
   <!-- ══════════════════════════════════
-       WRAPPER PRINCIPAL (app shell)
+       APP SHELL
   ══════════════════════════════════ -->
   <div class="app-shell">
 
-    <!-- ── TOP BAR ── -->
+    <!-- TOP BAR -->
     <header class="topbar" id="topbar">
       <div class="topbar__left">
         <span class="topbar__logo">◈</span>
-        <span class="topbar__title" id="topbarTitle">Accueil</span>
+        <span class="topbar__title" id="topbarTitle">FocusFlow</span>
       </div>
-      <div class="topbar__right" id="topbarActions">
-        <!-- Actions contextuelles injectées par JS -->
-      </div>
+      <div class="topbar__right" id="topbarActions"></div>
     </header>
 
     <!-- ══════════════════════════════════
-         VUE 1 — ACCUEIL (dashboard)
+         VUE 1 — ACCUEIL
     ══════════════════════════════════ -->
     <main class="view active" id="view-home">
 
-      <!-- Bloc stats héro -->
       <section class="home-hero">
         <p class="home-hero__greet" id="greetMsg">Bonjour 👋</p>
         <h1 class="home-hero__headline">Vos <em>objectifs</em><br/>du moment</h1>
-
         <div class="stats-row">
           <div class="stat-pill">
             <span class="stat-pill__n" id="stat-total">0</span>
@@ -84,17 +73,31 @@
         </div>
       </section>
 
-      <!-- Filtres rapides -->
-      <div class="chip-filters">
-        <button class="chip active" data-filter="all">Tous</button>
-        <button class="chip" data-filter="active">En cours</button>
-        <button class="chip" data-filter="done">Terminés</button>
+      <!-- Filtres statut + catégorie -->
+      <div class="filters-wrap">
+        <div class="chip-filters" id="statusFilters">
+          <button class="chip active" data-filter="all">Tous</button>
+          <button class="chip" data-filter="active">En cours</button>
+          <button class="chip" data-filter="done">Terminés</button>
+        </div>
+        <div class="chip-filters chip-filters--cats" id="catFilters">
+          <!-- injecté par JS -->
+        </div>
       </div>
 
-      <!-- Liste des objectifs -->
-      <section class="cards-list" id="objectifsList">
-        <!-- Injecté dynamiquement -->
-      </section>
+      <!-- Tri -->
+      <div class="sort-row">
+        <span class="sort-label">Trier par :</span>
+        <select id="sortSelect" class="sort-select">
+          <option value="date_creation">Date création</option>
+          <option value="priorite">Priorité</option>
+          <option value="date_fin">Date limite</option>
+          <option value="progression">Progression</option>
+        </select>
+      </div>
+
+      <!-- Liste -->
+      <section class="cards-list" id="objectifsList"></section>
 
       <!-- État vide -->
       <div class="empty-state" id="emptyState" hidden>
@@ -106,27 +109,32 @@
     </main>
 
     <!-- ══════════════════════════════════
-         VUE 2 — DÉTAIL D'UN OBJECTIF
+         VUE 2 — DÉTAIL
     ══════════════════════════════════ -->
     <main class="view" id="view-detail">
-      <!-- Contenu injecté dynamiquement par JS -->
+      <!-- injecté dynamiquement -->
     </main>
 
     <!-- ══════════════════════════════════
-         VUE 3 — STATISTIQUES
+         VUE 3 — STATISTIQUES & RÉGLAGES
     ══════════════════════════════════ -->
     <main class="view" id="view-stats">
       <div class="stats-page">
+
         <h2 class="stats-page__title">Tableau de bord</h2>
 
         <div class="stats-big-row">
           <div class="big-stat">
             <span class="big-stat__n" id="bs-total">0</span>
-            <span class="big-stat__l">Objectifs créés</span>
+            <span class="big-stat__l">Objectifs</span>
           </div>
           <div class="big-stat big-stat--gold">
             <span class="big-stat__n" id="bs-done">0</span>
             <span class="big-stat__l">Terminés</span>
+          </div>
+          <div class="big-stat big-stat--blue">
+            <span class="big-stat__n" id="bs-tasks">0</span>
+            <span class="big-stat__l">Tâches faites</span>
           </div>
         </div>
 
@@ -138,14 +146,55 @@
           <p class="progress-global-pct" id="globalPct">0%</p>
         </div>
 
+        <!-- Répartition par catégorie -->
+        <h3 class="stats-section-title">Par catégorie</h3>
+        <div id="catStats" class="cat-stats-list"></div>
+
+        <!-- Objectifs récents -->
         <h3 class="stats-section-title">Objectifs récents</h3>
         <div id="recentList" class="recent-list"></div>
+
+        <!-- ── RÉGLAGES ── -->
+        <h3 class="stats-section-title">Réglages</h3>
+
+        <!-- Thème -->
+        <div class="settings-card">
+          <div class="settings-row">
+            <span class="settings-row__label">🎨 Thème</span>
+            <div class="theme-toggle" id="themeToggle">
+              <button class="theme-btn active" data-theme="dark">🌙 Sombre</button>
+              <button class="theme-btn" data-theme="light">☀️ Clair</button>
+              <button class="theme-btn" data-theme="auto">🤖 Auto</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export / Import -->
+        <div class="settings-card">
+          <p class="settings-card__title">💾 Sauvegarde des données</p>
+          <div class="settings-btns">
+            <button class="btn-setting" id="btnExport">
+              ⬇️ Exporter JSON
+            </button>
+            <label class="btn-setting btn-setting--outline" for="inputImport">
+              ⬆️ Importer JSON
+            </label>
+            <input type="file" id="inputImport" accept=".json" style="display:none"/>
+          </div>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="settings-card settings-card--danger">
+          <p class="settings-card__title">⚠️ Zone dangereuse</p>
+          <button class="btn-setting btn-setting--danger" id="btnReset">
+            🗑 Tout supprimer
+          </button>
+        </div>
+
       </div>
     </main>
 
-    <!-- ══════════════════════════════════
-         BOTTOM NAVIGATION BAR
-    ══════════════════════════════════ -->
+    <!-- BOTTOM NAV -->
     <nav class="bottom-nav" role="navigation" aria-label="Navigation principale">
       <button class="nav-item active" data-view="home" aria-label="Accueil">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -154,7 +203,6 @@
         <span>Accueil</span>
       </button>
 
-      <!-- Bouton FAB centré (Ajouter) -->
       <button class="nav-item nav-item--fab" id="fabBtn" aria-label="Créer un objectif">
         <div class="fab-inner">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -180,23 +228,51 @@
   <div class="bottom-sheet" id="bottomSheet" role="dialog" aria-modal="true" aria-label="Créer un objectif">
     <div class="sheet-handle"></div>
     <h2 class="sheet-title">Nouvel objectif</h2>
-
     <div class="sheet-body">
+
+      <!-- Titre -->
       <div class="field">
         <label class="field__label" for="inputTitre">Titre</label>
         <input type="text" id="inputTitre" class="field__input"
                placeholder="Ex : Apprendre le JavaScript" maxlength="80" autocomplete="off"/>
       </div>
+
+      <!-- Date limite -->
       <div class="field">
         <label class="field__label" for="inputDateFin">Date limite</label>
         <input type="date" id="inputDateFin" class="field__input field__input--date"/>
       </div>
+
+      <!-- Priorité -->
+      <div class="field">
+        <label class="field__label">Priorité</label>
+        <div class="priority-picker" id="priorityPicker">
+          <button type="button" class="prio-btn" data-prio="urgent">🔴 Urgent</button>
+          <button type="button" class="prio-btn active" data-prio="normal">🟡 Normal</button>
+          <button type="button" class="prio-btn" data-prio="faible">🟢 Faible</button>
+        </div>
+      </div>
+
+      <!-- Catégorie -->
+      <div class="field">
+        <label class="field__label">Catégorie</label>
+        <div class="cat-picker" id="catPicker">
+          <button type="button" class="cat-btn active" data-cat="personnel">👤 Perso</button>
+          <button type="button" class="cat-btn" data-cat="pro">💼 Pro</button>
+          <button type="button" class="cat-btn" data-cat="sport">💪 Sport</button>
+          <button type="button" class="cat-btn" data-cat="finance">💰 Finance</button>
+          <button type="button" class="cat-btn" data-cat="formation">📚 Formation</button>
+          <button type="button" class="cat-btn" data-cat="autre">🌀 Autre</button>
+        </div>
+      </div>
+
       <button class="btn-primary-full" id="btnCreer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
         </svg>
         Créer l'objectif
       </button>
+
     </div>
   </div>
 
