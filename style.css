@@ -870,3 +870,325 @@ body {
   color: var(--red);
 }
 .modal-btn--danger:hover { background: rgba(248,113,113,.22); }
+
+/* ════════════════════════════════════════════════════════════
+   PHASE 2 — Streak, Alertes Deadline, Graphique progression
+════════════════════════════════════════════════════════════ */
+
+/* ── STREAK BADGE (topbar) ────────────────────────────── */
+.streak-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(245,166,35,.15);
+  border: 1px solid rgba(245,166,35,.3);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: default;
+  animation: streak-pulse 2s ease-in-out infinite;
+}
+@keyframes streak-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(245,166,35,.3); }
+  50%      { box-shadow: 0 0 0 6px rgba(245,166,35,0); }
+}
+.streak-badge__fire  { font-size: 1rem; line-height: 1; }
+.streak-badge__count {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: .88rem;
+  color: var(--accent);
+}
+
+/* ── STREAK CARD (hero accueil) ───────────────────────── */
+.streak-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(245,166,35,.12), rgba(245,166,35,.04));
+  border: 1px solid rgba(245,166,35,.25);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-top: 16px;
+  gap: 12px;
+}
+.streak-card__left  { display: flex; align-items: center; gap: 12px; }
+.streak-card__fire  { font-size: 1.8rem; line-height: 1; flex-shrink: 0; }
+.streak-card__title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: .88rem; }
+.streak-card__sub   { font-size: .72rem; color: var(--text-3); margin-top: 2px; }
+.streak-card__right { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.streak-card__days  {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 2.2rem;
+  line-height: 1;
+  color: var(--accent);
+}
+.streak-card__unit  { font-size: .65rem; color: var(--text-3); text-transform: uppercase; letter-spacing: .07em; }
+
+/* ── ALERTES DEADLINE (accueil) ───────────────────────── */
+.deadline-alerts { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+.deadline-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  border: 1px solid;
+  animation: alert-in .3s var(--ease) both;
+  cursor: pointer;
+  transition: transform .15s;
+}
+.deadline-alert:active { transform: scale(.98); }
+@keyframes alert-in {
+  from { opacity:0; transform: translateX(-10px); }
+  to   { opacity:1; transform: translateX(0); }
+}
+.deadline-alert--urgent {
+  background: rgba(248,113,113,.10);
+  border-color: rgba(248,113,113,.3);
+}
+.deadline-alert--warning {
+  background: rgba(245,166,35,.10);
+  border-color: rgba(245,166,35,.25);
+}
+.deadline-alert__icon { font-size: 1.3rem; flex-shrink: 0; }
+.deadline-alert__body { flex: 1; min-width: 0; }
+.deadline-alert__title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: .85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deadline-alert--urgent .deadline-alert__title { color: var(--red); }
+.deadline-alert--warning .deadline-alert__title { color: var(--accent); }
+.deadline-alert__days { font-size: .72rem; color: var(--text-3); margin-top: 2px; }
+.deadline-alert__arrow { color: var(--text-3); flex-shrink: 0; font-size: .8rem; }
+
+/* ── STREAK STAT CARD (page stats) ───────────────────── */
+.streak-stat-card {
+  background: linear-gradient(135deg, rgba(245,166,35,.10), rgba(245,166,35,.03));
+  border: 1px solid rgba(245,166,35,.22);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.streak-stat-card__top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.streak-stat-card__icon { font-size: 2rem; flex-shrink: 0; }
+.streak-stat-card__title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: .95rem;
+}
+.streak-stat-card__best { font-size: .72rem; color: var(--text-3); margin-top: 3px; }
+.streak-stat-card__num {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+.streak-stat-card__num span {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 2.8rem;
+  line-height: 1;
+  color: var(--accent);
+}
+.streak-stat-card__num small {
+  font-size: .65rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+/* Mini calendrier 7 jours */
+.streak-week {
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+.streak-day {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.streak-day__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+  transition: background .2s, border-color .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .7rem;
+}
+.streak-day__dot--active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.streak-day__dot--today {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+.streak-day__label {
+  font-size: .58rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+/* ── GRAPHIQUE ACTIVITÉ (canvas) ──────────────────────── */
+.chart-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  transition: background .3s;
+}
+.activity-chart {
+  width: 100%;
+  height: 140px;
+  display: block;
+}
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .7rem;
+  color: var(--text-3);
+  margin-top: 10px;
+  padding-left: 4px;
+}
+.chart-legend__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.chart-legend__dot--tasks { background: var(--accent); }
+.chart-legend__dot--obj   { background: var(--green); }
+
+/* ── DEADLINE LIST (page stats) ───────────────────────── */
+.deadline-list { display: flex; flex-direction: column; gap: 8px; }
+.deadline-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background .15s, transform .15s, border-color .15s;
+}
+.deadline-item:active { transform: scale(.98); }
+.deadline-item--urgent { border-color: rgba(248,113,113,.3); background: rgba(248,113,113,.05); }
+.deadline-item--warning{ border-color: rgba(245,166,35,.25);  background: rgba(245,166,35,.05); }
+.deadline-item--ok     { border-color: rgba(52,211,153,.2);   background: rgba(52,211,153,.04); }
+.deadline-item__icon   { font-size: 1.2rem; flex-shrink: 0; }
+.deadline-item__name   { flex: 1; font-size: .85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deadline-item__badge  {
+  font-size: .68rem;
+  font-weight: 700;
+  font-family: 'Syne', sans-serif;
+  padding: 3px 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.deadline-item--urgent  .deadline-item__badge { background: var(--red-dim);   color: var(--red); }
+.deadline-item--warning .deadline-item__badge { background: var(--accent-dim); color: var(--accent); }
+.deadline-item--ok      .deadline-item__badge { background: var(--green-dim);  color: var(--green); }
+
+/* ── TOGGLE SWITCH (notifications) ───────────────────── */
+.toggle-switch {
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-md);
+  cursor: pointer;
+  position: relative;
+  transition: background .25s, border-color .25s;
+  flex-shrink: 0;
+}
+.toggle-switch.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.toggle-switch__knob {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.3);
+  transition: transform .25s var(--spring);
+}
+.toggle-switch.on .toggle-switch__knob { transform: translateX(22px); }
+.settings-notif-status {
+  font-size: .72rem;
+  color: var(--text-3);
+  margin-top: -6px;
+}
+
+/* ── NAV 4 ITEMS ──────────────────────────────────────── */
+/* La bottom nav passe de 3 à 4 boutons + FAB central     */
+.bottom-nav {
+  justify-content: space-around;
+}
+/* Réduit légèrement le padding des items sur 4 colonnes */
+.nav-item { padding: 8px 14px; }
+.nav-item span { font-size: .6rem; }
+
+/* ── PAGE RÉGLAGES ────────────────────────────────────── */
+.settings-card__desc {
+  font-size: .78rem;
+  color: var(--text-3);
+  line-height: 1.5;
+  margin-top: -6px;
+}
+
+/* Bloc "À propos" */
+.about-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 4px;
+}
+.about-logo {
+  font-size: 2.4rem;
+  color: var(--accent);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.about-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: -.02em;
+}
+.about-version {
+  font-size: .72rem;
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 2px;
+}
+.about-desc {
+  font-size: .75rem;
+  color: var(--text-3);
+  margin-top: 4px;
+  line-height: 1.4;
+}

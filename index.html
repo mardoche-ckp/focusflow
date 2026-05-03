@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="FocusFlow"/>
-  <meta name="description" content="Gestion d'objectifs personnels — v2"/>
-  <title>FocusFlow v2</title>
+  <meta name="description" content="Gestion d'objectifs personnels — v3"/>
+  <title>FocusFlow</title>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="icons/icon-192.svg"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -18,45 +18,47 @@
 </head>
 <body>
 
-  <!-- ══════════════════════════════════
-       SPLASH SCREEN
-  ══════════════════════════════════ -->
+  <!-- SPLASH -->
   <div id="splash" class="splash">
     <div class="splash__inner">
       <span class="splash__logo">◈</span>
       <span class="splash__name">FocusFlow</span>
-
     </div>
   </div>
 
-  <!-- CONFETTI CANVAS (complétion objectif) -->
+  <!-- CONFETTI -->
   <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
   <!-- TOAST -->
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
-  <!-- ══════════════════════════════════
-       APP SHELL
-  ══════════════════════════════════ -->
   <div class="app-shell">
 
     <!-- TOP BAR -->
-    <header class="topbar" id="topbar">
+    <header class="topbar">
       <div class="topbar__left">
         <span class="topbar__logo">◈</span>
         <span class="topbar__title" id="topbarTitle">FocusFlow</span>
       </div>
-      <div class="topbar__right" id="topbarActions"></div>
+      <div class="topbar__right" id="topbarActions">
+        <!-- Streak badge (visible sur l'accueil) -->
+        <div class="streak-badge" id="streakBadge" hidden>
+          <span class="streak-badge__fire">🔥</span>
+          <span class="streak-badge__count" id="streakCount">0</span>
+        </div>
+      </div>
     </header>
 
-    <!-- ══════════════════════════════════
+    <!-- ══════════════════════
          VUE 1 — ACCUEIL
-    ══════════════════════════════════ -->
+    ══════════════════════ -->
     <main class="view active" id="view-home">
 
       <section class="home-hero">
         <p class="home-hero__greet" id="greetMsg">Bonjour 👋</p>
         <h1 class="home-hero__headline">Vos <em>objectifs</em><br/>du moment</h1>
+
+        <!-- Stats pills -->
         <div class="stats-row">
           <div class="stat-pill">
             <span class="stat-pill__n" id="stat-total">0</span>
@@ -71,18 +73,35 @@
             <span class="stat-pill__l">Terminés</span>
           </div>
         </div>
+
+        <!-- 🔥 Streak card (inline dans le hero) -->
+        <div class="streak-card" id="streakCard">
+          <div class="streak-card__left">
+            <span class="streak-card__fire">🔥</span>
+            <div>
+              <p class="streak-card__title">Série en cours</p>
+              <p class="streak-card__sub" id="streakSub">Complétez une tâche aujourd'hui !</p>
+            </div>
+          </div>
+          <div class="streak-card__right">
+            <span class="streak-card__days" id="streakDays">0</span>
+            <span class="streak-card__unit">jours</span>
+          </div>
+        </div>
+
+        <!-- ⏰ Alertes deadline urgentes -->
+        <div id="deadlineAlerts" class="deadline-alerts"></div>
+
       </section>
 
-      <!-- Filtres statut + catégorie -->
+      <!-- Filtres -->
       <div class="filters-wrap">
         <div class="chip-filters" id="statusFilters">
           <button class="chip active" data-filter="all">Tous</button>
           <button class="chip" data-filter="active">En cours</button>
           <button class="chip" data-filter="done">Terminés</button>
         </div>
-        <div class="chip-filters chip-filters--cats" id="catFilters">
-          <!-- injecté par JS -->
-        </div>
+        <div class="chip-filters chip-filters--cats" id="catFilters"></div>
       </div>
 
       <!-- Tri -->
@@ -108,16 +127,14 @@
 
     </main>
 
-    <!-- ══════════════════════════════════
+    <!-- ══════════════════════
          VUE 2 — DÉTAIL
-    ══════════════════════════════════ -->
-    <main class="view" id="view-detail">
-      <!-- injecté dynamiquement -->
-    </main>
+    ══════════════════════ -->
+    <main class="view" id="view-detail"></main>
 
-    <!-- ══════════════════════════════════
-         VUE 3 — STATISTIQUES & RÉGLAGES
-    ══════════════════════════════════ -->
+    <!-- ══════════════════════
+         VUE 3 — STATISTIQUES
+    ══════════════════════ -->
     <main class="view" id="view-stats">
       <div class="stats-page">
 
@@ -138,6 +155,23 @@
           </div>
         </div>
 
+        <!-- 🔥 Streak -->
+        <div class="streak-stat-card">
+          <div class="streak-stat-card__top">
+            <span class="streak-stat-card__icon">🔥</span>
+            <div>
+              <p class="streak-stat-card__title">Série actuelle</p>
+              <p class="streak-stat-card__best" id="streakBest">Meilleure série : 0 jours</p>
+            </div>
+            <div class="streak-stat-card__num">
+              <span id="streakStatDays">0</span>
+              <small>jours</small>
+            </div>
+          </div>
+          <div class="streak-week" id="streakWeek"></div>
+        </div>
+
+        <!-- Taux global -->
         <div class="progress-global-wrap">
           <p class="progress-global-label">Taux de complétion global</p>
           <div class="progress-global-bar">
@@ -146,21 +180,34 @@
           <p class="progress-global-pct" id="globalPct">0%</p>
         </div>
 
-        <!-- Répartition par catégorie -->
+        <!-- ⏰ Deadlines -->
+        <h3 class="stats-section-title">⏰ Deadlines à venir</h3>
+        <div id="deadlineList" class="deadline-list"></div>
+
+        <!-- Par catégorie -->
         <h3 class="stats-section-title">Par catégorie</h3>
         <div id="catStats" class="cat-stats-list"></div>
 
-        <!-- Objectifs récents -->
+        <!-- Récents -->
         <h3 class="stats-section-title">Objectifs récents</h3>
         <div id="recentList" class="recent-list"></div>
 
-        <!-- ── RÉGLAGES ── -->
-        <h3 class="stats-section-title">Réglages</h3>
+      </div>
+    </main>
+
+    <!-- ══════════════════════
+         VUE 4 — RÉGLAGES
+    ══════════════════════ -->
+    <main class="view" id="view-settings">
+      <div class="stats-page">
+
+        <h2 class="stats-page__title">Réglages</h2>
 
         <!-- Thème -->
         <div class="settings-card">
+          <p class="settings-card__title">🎨 Apparence</p>
           <div class="settings-row">
-            <span class="settings-row__label">🎨 Thème</span>
+            <span class="settings-row__label">Thème</span>
             <div class="theme-toggle" id="themeToggle">
               <button class="theme-btn active" data-theme="dark">🌙 Sombre</button>
               <button class="theme-btn" data-theme="light">☀️ Clair</button>
@@ -169,33 +216,56 @@
           </div>
         </div>
 
-        <!-- Export / Import -->
+        <!-- Notifications -->
+        <div class="settings-card">
+          <p class="settings-card__title">🔔 Notifications</p>
+          <div class="settings-row">
+            <span class="settings-row__label">Alertes deadline</span>
+            <button class="toggle-switch" id="toggleNotif">
+              <span class="toggle-switch__knob"></span>
+            </button>
+          </div>
+          <p class="settings-notif-status" id="notifStatus">Notifications désactivées</p>
+        </div>
+
+        <!-- Sauvegarde -->
         <div class="settings-card">
           <p class="settings-card__title">💾 Sauvegarde des données</p>
+          <p class="settings-card__desc">Exportez vos objectifs en JSON pour les sauvegarder ou les transférer sur un autre appareil.</p>
           <div class="settings-btns">
-            <button class="btn-setting" id="btnExport">
-              ⬇️ Exporter JSON
-            </button>
-            <label class="btn-setting btn-setting--outline" for="inputImport">
-              ⬆️ Importer JSON
-            </label>
+            <button class="btn-setting" id="btnExport">⬇️ Exporter JSON</button>
+            <label class="btn-setting btn-setting--outline" for="inputImport">⬆️ Importer JSON</label>
             <input type="file" id="inputImport" accept=".json" style="display:none"/>
           </div>
         </div>
 
-        <!-- Danger zone -->
+        <!-- Infos app -->
+        <div class="settings-card">
+          <p class="settings-card__title">ℹ️ À propos</p>
+          <div class="about-row">
+            <span class="about-logo">◈</span>
+            <div>
+              <p class="about-name">FocusFlow</p>
+              <p class="about-version">Version 3.0 — Phase 2</p>
+              <p class="about-desc">Gérez vos objectifs personnels avec clarté et motivation.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Danger -->
         <div class="settings-card settings-card--danger">
           <p class="settings-card__title">⚠️ Zone dangereuse</p>
-          <button class="btn-setting btn-setting--danger" id="btnReset">
-            🗑 Tout supprimer
-          </button>
+          <p class="settings-card__desc">Cette action supprimera définitivement tous vos objectifs et tâches.</p>
+          <button class="btn-setting btn-setting--danger" id="btnReset">🗑 Tout supprimer</button>
         </div>
 
       </div>
     </main>
 
-    <!-- BOTTOM NAV -->
-    <nav class="bottom-nav" role="navigation" aria-label="Navigation principale">
+    <!-- BOTTOM NAV — 4 onglets -->
+    <nav class="bottom-nav" role="navigation">
+
+      <!-- Accueil -->
       <button class="nav-item active" data-view="home" aria-label="Accueil">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
@@ -203,7 +273,16 @@
         <span>Accueil</span>
       </button>
 
-      <button class="nav-item nav-item--fab" id="fabBtn" aria-label="Créer un objectif">
+      <!-- Stats -->
+      <button class="nav-item" data-view="stats" aria-label="Stats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        <span>Stats</span>
+      </button>
+
+      <!-- FAB centré -->
+      <button class="nav-item nav-item--fab" id="fabBtn" aria-label="Créer">
         <div class="fab-inner">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -211,39 +290,33 @@
         </div>
       </button>
 
-      <button class="nav-item" data-view="stats" aria-label="Statistiques">
+      <!-- Réglages -->
+      <button class="nav-item" data-view="settings" aria-label="Réglages">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
-        <span>Stats</span>
+        <span>Réglages</span>
       </button>
+
     </nav>
 
-  </div><!-- /.app-shell -->
+  </div>
 
-  <!-- ══════════════════════════════════
-       BOTTOM SHEET — Créer un objectif
-  ══════════════════════════════════ -->
+  <!-- BOTTOM SHEET -->
   <div class="sheet-overlay" id="sheetOverlay"></div>
-  <div class="bottom-sheet" id="bottomSheet" role="dialog" aria-modal="true" aria-label="Créer un objectif">
+  <div class="bottom-sheet" id="bottomSheet" role="dialog" aria-modal="true">
     <div class="sheet-handle"></div>
     <h2 class="sheet-title">Nouvel objectif</h2>
     <div class="sheet-body">
-
-      <!-- Titre -->
       <div class="field">
         <label class="field__label" for="inputTitre">Titre</label>
-        <input type="text" id="inputTitre" class="field__input"
-               placeholder="Ex : Apprendre le JavaScript" maxlength="80" autocomplete="off"/>
+        <input type="text" id="inputTitre" class="field__input" placeholder="Ex : Apprendre le JavaScript" maxlength="80" autocomplete="off"/>
       </div>
-
-      <!-- Date limite -->
       <div class="field">
         <label class="field__label" for="inputDateFin">Date limite</label>
         <input type="date" id="inputDateFin" class="field__input field__input--date"/>
       </div>
-
-      <!-- Priorité -->
       <div class="field">
         <label class="field__label">Priorité</label>
         <div class="priority-picker" id="priorityPicker">
@@ -252,8 +325,6 @@
           <button type="button" class="prio-btn" data-prio="faible">🟢 Faible</button>
         </div>
       </div>
-
-      <!-- Catégorie -->
       <div class="field">
         <label class="field__label">Catégorie</label>
         <div class="cat-picker" id="catPicker">
@@ -265,14 +336,12 @@
           <button type="button" class="cat-btn" data-cat="autre">🌀 Autre</button>
         </div>
       </div>
-
       <button class="btn-primary-full" id="btnCreer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
         </svg>
         Créer l'objectif
       </button>
-
     </div>
   </div>
 
