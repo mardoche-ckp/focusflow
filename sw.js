@@ -1,62 +1,98 @@
 /* ════════════════════════════════════════════════════════════
-   sw.js — Service Worker FocusFlow PWA
-   Stratégie : Cache-First pour les assets statiques
-   → L'app fonctionne HORS LIGNE après la première visite
+   sw.js — FocusFlow Secure
+   🔏 Service Worker avec :
+     - Cache versionné (invalidation forcée à chaque update)
+     - Stratégie Cache-First pour les assets locaux
+     - Network-First pour les ressources externes
+     - Mode offline complet
 ════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'focusflow-v1';
+'use strict';
 
-// Fichiers à mettre en cache dès l'installation
-const ASSETS = [
+/* Version du cache — incrémenter à chaque déploiement */
+var CACHE_VERSION = 'focusflow-secure-v1';
+var CACHE_STATIC  = CACHE_VERSION + '-static';
+
+/* Assets à mettre en cache (uniquement fichiers locaux de confiance) */
+var ASSETS = [
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
   './icons/icon-192.svg',
-  './icons/icon-512.svg',
-  // Polices Google (si réseau disponible lors de l'install)
-  'https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap',
+  './icons/icon-512.svg'
 ];
 
-/* ── Installation : on pré-cache les assets ── */
-self.addEventListener('install', event => {
+/* ── Installation : pré-cache les assets locaux ── */
+self.addEventListener('install', function(event) {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      // On ignore les erreurs individuelles (ex: polices hors ligne)
-      return Promise.allSettled(ASSETS.map(url => cache.add(url)));
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_STATIC).then(function(cache) {
+      /* addAll échoue si un seul fichier manque → atomique */
+      return cache.addAll(ASSETS);
+    }).then(function() {
+      /* Force l'activation immédiate sans attendre l'ancien SW */
+      return self.skipWaiting();
+    })
   );
 });
 
-/* ── Activation : supprime les anciens caches ── */
-self.addEventListener('activate', event => {
+/* ── Activation : purge les anciens caches ── */
+self.addEventListener('activate', function(event) {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(k) { return k !== CACHE_STATIC; })
+            .map(function(k) { return caches.delete(k); })
+      );
+    }).then(function() {
+      return self.clients.claim();
+    })
   );
 });
 
-/* ── Fetch : Cache-First → réseau en fallback ── */
-self.addEventListener('fetch', event => {
-  // Ignore les requêtes non-GET
-  if (event.request.method !== 'GET') return;
+/* ── Fetch : Cache-First pour assets locaux, fallback réseau ── */
+self.addEventListener('fetch', function(event) {
+  /* Ignore les requêtes non-GET et non-HTTP */
+  if (event.request.method !== 'GET') { return; }
+  if (!event.request.url.startsWith('http')) { return; }
 
+  /* Ressources externes (polices) → Network-First */
+  if (event.request.url.includes('fonts.google')) {
+    event.respondWith(
+      fetch(event.request).catch(function() {
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
+
+  /* Assets locaux → Cache-First */
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      // Pas en cache → réseau, puis on met en cache
-      return fetch(event.request).then(response => {
-        if (!response || response.status !== 200) return response;
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+    caches.match(event.request).then(function(cached) {
+      if (cached) { return cached; }
+      return fetch(event.request).then(function(response) {
+        /* Ne cache que les réponses valides */
+        if (!response || response.status !== 200 || response.type === 'opaque') {
+          return response;
+        }
+        var clone = response.clone();
+        caches.open(CACHE_STATIC).then(function(cache) {
+          cache.put(event.request, clone);
+        });
         return response;
-      }).catch(() => {
-        // Hors ligne et pas en cache : page offline basique
+      }).catch(function() {
+        /* Hors ligne : retourne index.html pour les navigations */
         if (event.request.destination === 'document') {
           return caches.match('./index.html');
         }
       });
     })
   );
+});
+
+/* ── Message : force le rechargement du cache ── */
+self.addEventListener('message', function(event) {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
