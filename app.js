@@ -833,7 +833,8 @@ class UIManager {
     btnBack.addEventListener('click',function(){self.app.goHome();});
     var btnDel=this._iconBtn('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>','icon-btn icon-btn--danger','Supprimer');
     var cid=objId; btnDel.addEventListener('click',function(){self.app.confirmerSuppression(cid);});
-    acts.insertBefore(btnBack,acts.firstChild); acts.insertBefore(btnDel,acts.firstChild);
+    /* Ordre affiché : [Supprimer] [Retour] → on insère Retour en dernier en firstChild */
+    acts.insertBefore(btnDel,acts.firstChild); acts.insertBefore(btnBack,acts.firstChild);
   }
 
   renderStreak(streak, best, week) {
